@@ -1,4 +1,4 @@
-import cellsim
+import cellsim_linear
 import os
 import time
 import psutil
@@ -74,3 +74,7 @@ print(test_matrix[5][6])
 tissue = cellsim.Tissue(10, 40, cellsim.Cell)
 tissue.seed_from_file('tt1.txt', cellsim.Cell)
 print(tissue)
+
+tissue = cellsim.Tissue(1000,4000)
+tissue.seed_random(0.5, cellsim.Cell)
+# print(tissue)

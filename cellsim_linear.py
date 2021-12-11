@@ -1,11 +1,13 @@
 import copy
 
-import cellsim
+import cellsim_linear
 import os
 import time
 import psutil
 import cProfile, pstats, io
 
+
+# TODO: DON'T IMPORT WHOLE MODULE
 
 #  ====================================Profilers =============================================
 # Time profiler
@@ -90,46 +92,67 @@ class Cancer(Cell):
 # TODO: Add this function
 
 
-# @time_profile
-@space_profile
+@time_profile
+# @space_profile
 class Tissue:
-    """"
+    """Represents the space in which the cell grows.
+        Attributes:
+            row (int):
+            cols (int):
+            CellType (Cell, Cancer or other valid type):
+
+        Methods:
+            init:
+            str:
+            getitem:
+            setitem:
+            seed_from_matrix:
+            seed_from_file
+
     """
 
-    def __init__(self, rows=1, cols=1,
-                 CellType=Cell):  # idk if this is the right way to do it - what if cell is defined after ?
+    # TODO: Should check if the CellType has all the required attributes.
+    def __init__(self, rows=1, cols=1, CellType=Cell):
+        # idk if this is the right way to do it - what if cell is defined after ?
         self.rows = rows
         self.cols = cols
-        if issubclass(CellType,
-                      object):  # CellType should be a "new-style class" that is, user-defined. https://stackoverflow.com/questions/54867/what-is-the-difference-between-old-style-and-new-style-classes-in-python
-            # TODO: Should also have the attributes of a cell or cancer cell. Object is default superclass
+
+        # CellType should be a "new-style class" that is, user-defined. Object is the default superclass -> Good check to have that the class is user defined and we are not trying to pass"int"
+
+        # https://stackoverflow.com/questions/54867/what-is-the-difference-between-old-style-and-new-style-classes-in-python
+        if issubclass(CellType, object):
 
             self.CellType = CellType
+
         else:
             self.CellType = Cell
 
-        self.matrix = []
+        self.matrix = [[CellType() for _ in range(self.cols)] for _ in range(self.rows)]
 
     def __str__(self):
-
-        tissue_str = ""  # TODO: Better Variable names
+        tissue_str = ""
         for row in self.matrix:
             tissue_str += f'{"".join(map(lambda x: str(x), row))}\n'  # might not be most efficient way to convert everything.
         return tissue_str
 
     def __getitem__(self, idx):
-        """ Defines the getter for the Tissue Class"""
+        """ Defines the getter for the Tissue class"""
         return self.matrix[idx]
 
     def __setitem__(self, key, value):
-        """ Defines the setter for the Tissue Class"""
+        """ Defines the setter for the Tissue class"""
         self.matrix[key] = value
 
-    # Should this be a class method?
+    def seed_from_matrix(self, seed_matrix):  # Should this be a class method?
+        """ Overwrite the four attribute variables using a single argument.
+        :param seed_matrix:
+        """
+        # TODO: Enforce the arguments of seed matrix to be valid:
+        # TODO: rows and columns should update.
 
-    def seed_from_matrix(self, seed_matrix):
-        # TODO: Enforce the arguments of seed matrix to be valid
         self.matrix = copy.deepcopy(seed_matrix)
+        self.cols = len(self.matrix)
+        self.rows = len(self.matrix[0])  # Check if this overrides properly
 
     def seed_from_file(self, filename, CellType=Cell):
         """ This function takes a filename and CellType as input and changes the self.matrix attribute to seed.
@@ -139,7 +162,7 @@ class Tissue:
         :return
         """
         # TODO: Include relative path of filename.
-        self.matrix = []  # Is this going to modify all instances too? Do we want it to? Should we use .clear()?
+        self.matrix.clear()  # Is this going to modify all instances too? Do we want it to? Should we use .clear()?
         if ".txt" not in filename:
             self.matrix = []
         else:
@@ -155,5 +178,22 @@ class Tissue:
 
             except IOError:
                 self.matrix = []
+
+    # TODO: Change ">" depending on whether it is probability of being alive or dead.
+    # TODO: Try opti with for loop or list comprehension
+    def seed_random(self, probability, CellType):
+        # We want to avoid having to call __init__ at each iteration of the coming loop so we define the two possible states:
+
+        from random import random
+        # Might be a better way to do this.
+
+        # This line will override the values in self.matrix in 2 steps:
+        # - The list comprehension selects each row of the matrix
+        # - The lambda function is applied to each element of the row. It calls the random method of the random module.
+        # which returns a float from 0 to 1. if this number is bigger than the PROBABILITY OF BEING DEAD, then CellType
+        # will be instantiated as alive. Otherwise, CellType is instantiated as Dead.
+
+        self.matrix = [list(map(lambda x: CellType(True) if random() > probability else CellType(False), row)) for row in
+                       self.matrix]
 
 # TODO: CellType check decorator cos I need it everywhere
