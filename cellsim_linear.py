@@ -3,7 +3,7 @@ import copy
 import cellsim_linear
 import os
 import time
-import psutil
+# import psutil
 import cProfile, pstats, io
 
 
@@ -36,18 +36,18 @@ def process_memory():
     return mem_info.rss
 
 
-def space_profile(func):
-    def wrapper(*args, **kwargs):
-        mem_before = process_memory()
-        result = func(*args, **kwargs)
-        mem_after = process_memory()
-        print("{}:consumed memory: {:,}".format(
-            func.__name__,
-            mem_before, mem_after, mem_after - mem_before))
-
-        return result
-
-    return wrapper
+# def space_profile(func):
+#     def wrapper(*args, **kwargs):
+#         mem_before = process_memory()
+#         result = func(*args, **kwargs)
+#         mem_after = process_memory()
+#         print("{}:consumed memory: {:,}".format(
+#             func.__name__,
+#             mem_before, mem_after, mem_after - mem_before))
+#
+#         return result
+#
+#     return wrapper
 
 
 # ===============================================Start of Code=====================================================
@@ -75,8 +75,10 @@ class Cell:
         return self.alive
 
     def update_cell(self):
-        pass
+        overpopulation = 4
+            rule_set = {neighbour_count: False if neighbour_count != overpopulation else neighbour_count: True for neighbour_count in range(9)}
 
+# Can I define a functio
 
 # TODO: add this function
 
