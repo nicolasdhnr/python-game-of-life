@@ -1,6 +1,6 @@
 import copy
 
-import cellsim_linear
+import cellsim
 import os
 import time
 # import psutil
@@ -8,6 +8,7 @@ import cProfile, pstats, io
 
 
 # TODO: DON'T IMPORT WHOLE MODULE
+#TODO: In this one store the coordinate of each cell with its surroundings and whether it is alive or dead - make data type that contains both
 
 #  ====================================Profilers =============================================
 # Time profiler

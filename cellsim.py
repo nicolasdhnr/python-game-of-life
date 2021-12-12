@@ -1,9 +1,7 @@
 import copy
-
-import cellsim_linear
 import os
 import time
-# import psutil
+import psutil
 import cProfile, pstats, io
 
 
@@ -56,14 +54,14 @@ class Cell:
     """
 
     """
+    overpopulation = 4
+    rule_set = {key: (False if key != 4 else True) for key in
+                range(9)}
 
     def __init__(self, alive=False):
         # Error Handling
         self.alive = alive
-
-    @property
-    def living_neighbours(self):
-        pass
+        self.overpopulation = 4
 
     def __str__(self):
         if self.alive:
@@ -74,11 +72,11 @@ class Cell:
     def is_alive(self):
         return self.alive
 
-    def update_cell(self):
-        overpopulation = 4
-            rule_set = {neighbour_count: False if neighbour_count != overpopulation else neighbour_count: True for neighbour_count in range(9)}
+    def update_cell(self, surroundings):
+        alive_cells = sum(1 for row in surroundings for elem in row if elem.is_alive == True)
+        self.alive = self.rule_set.get(alive_cells)
+        return 
 
-# Can I define a functio
 
 # TODO: add this function
 
@@ -86,9 +84,6 @@ class Cell:
 class Cancer(Cell):
     def __init__(self, alive=False):
         super().__init__(alive)
-
-    def update_cell(self):
-        pass
 
 
 # TODO: Add this function
@@ -113,19 +108,20 @@ class Tissue:
 
     """
 
-    # TODO: Should check if the CellType has all the required attributes.
     def __init__(self, rows=1, cols=1, CellType=Cell):
-        # idk if this is the right way to do it - what if cell is defined after ?
-        self.rows = rows
+
+        self.rows = rows  # TODO: Make this a property - need it to update iff matrix is changed
         self.cols = cols
 
         # CellType should be a "new-style class" that is, user-defined. Object is the default superclass -> Good check to have that the class is user defined and we are not trying to pass"int"
-
         # https://stackoverflow.com/questions/54867/what-is-the-difference-between-old-style-and-new-style-classes-in-python
-        if issubclass(CellType, object):
 
+        # Then we need to check if CellType has all the attributes of a Cell necessary to make it work.
+        if issubclass(CellType, object) and all(
+                hasattr(CellType, attr) for attr in ["alive", "is_alive", "update_cell"]) \
+                and callable(hasattr(["is_alive",
+                                      "update_cell"])):  # TODO: This should be its own decorator. How do iI get this to check at each function where CellType is called, but ONLY ONCE.
             self.CellType = CellType
-
         else:
             self.CellType = Cell
 
@@ -194,8 +190,39 @@ class Tissue:
         # - The lambda function is applied to each element of the row. It calls the random method of the random module.
         # which returns a float from 0 to 1. if this number is bigger than the PROBABILITY OF BEING DEAD, then CellType
         # will be instantiated as alive. Otherwise, CellType is instantiated as Dead.
-
-        self.matrix = [list(map(lambda x: CellType(True) if random() > probability else CellType(False), row)) for row in
+        self.CellType = CellType
+        self.matrix = [list(map(lambda x: CellType(True) if random() > probability else CellType(False), row)) for row
+                       in
                        self.matrix]
+        self.rows = len(self.matrix[0])
+        self.cols = len(self.matrix)
+
+    def next_state(self):
+        def surroundings(input_matrix, row, column):
+            """Takes in the current matrix and returns the surroundings of the Cell"""
+
+            # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
+            # Make sure in other sections of the code that these cells than never be brought to life.
+            # Make sure that custom functions can't bring them to life either and mess everything up.
+            def edge_detection(edge, param):
+                if edge == 0 or edge == param:
+                    return True
+                else:
+                    return False
+
+            row_edge = edge_detection(row, self.rows - 1)
+            column_edge = edge_detection(column, self.cols - 1)
+            return [
+                [self.CellType(False) if (row_edge and row_idx == row - 1 or column_idx == column - 1 and column_edge
+                                          or row_idx == row and column_idx == column)  # Ignoring middle element
+                 else input_matrix[column][row] for row_idx in range(row - 1, row + 2)]
+                for column_idx in range(column - 1, column + 2)]  # Improve readability
+
+        for i in range(self.cols):
+            # I really don't want to do this - should set an attribute alive cells and only search through them but yeah.
+            for j in range(self.rows):
+                print(surroundings(self.matrix, j, i))
+                self.CellType.update_cell(Cell, surroundings=surroundings(self.matrix, j, i))
+
 
 # TODO: CellType check decorator cos I need it everywhere
