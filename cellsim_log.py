@@ -1,17 +1,16 @@
 import copy
-
-import cellsim
 import os
 import time
-# import psutil
+import psutil
 import cProfile, pstats, io
 
-
 # TODO: DON'T IMPORT WHOLE MODULE
-#TODO: In this one store the coordinate of each cell with its surroundings and whether it is alive or dead - make data type that contains both
 
 #  ====================================Profilers =============================================
 # Time profiler
+import temp as temp
+
+
 def time_profile(fnc):
     """A decorator that uses cProfile to profile a function"""
 
@@ -37,18 +36,18 @@ def process_memory():
     return mem_info.rss
 
 
-# def space_profile(func):
-#     def wrapper(*args, **kwargs):
-#         mem_before = process_memory()
-#         result = func(*args, **kwargs)
-#         mem_after = process_memory()
-#         print("{}:consumed memory: {:,}".format(
-#             func.__name__,
-#             mem_before, mem_after, mem_after - mem_before))
-#
-#         return result
-#
-#     return wrapper
+def space_profile(func):
+    def wrapper(*args, **kwargs):
+        mem_before = process_memory()
+        result = func(*args, **kwargs)
+        mem_after = process_memory()
+        print("{}:consumed memory: {:,}".format(
+            func.__name__,
+            mem_before, mem_after, mem_after - mem_before))
+
+        return result
+
+    return wrapper
 
 
 # ===============================================Start of Code=====================================================
@@ -62,21 +61,24 @@ class Cell:
         # Error Handling
         self.alive = alive
 
-    @property
-    def living_neighbours(self):
-        pass
+    def is_alive(self):
+        return self.alive
 
     def __str__(self):
-        if self.alive:
+        if self.is_alive():
             return "O"
         else:
             return "."
 
-    def is_alive(self):
-        return self.alive
+    @property
+    def rule_set(self):
+        return {0: False, 1: False, 2: self.is_alive(), 3: True, 4: False, 5: False, 6: False, 7: False, 8: False,
+                9: False}
 
-    def update_cell(self):
-        pass
+    def update_cell(self, surroundings):
+        alive_cells = sum(1 for row in surroundings for elem in row if elem.is_alive())
+        # print(self.rule_set.get(alive_cells))
+        self.alive = self.rule_set[alive_cells]
 
 
 # TODO: add this function
@@ -86,15 +88,10 @@ class Cancer(Cell):
     def __init__(self, alive=False):
         super().__init__(alive)
 
-    def update_cell(self):
-        pass
-
 
 # TODO: Add this function
 
 
-@time_profile
-# @space_profile
 class Tissue:
     """Represents the space in which the cell grows.
         Attributes:
@@ -112,28 +109,36 @@ class Tissue:
 
     """
 
-    # TODO: Should check if the CellType has all the required attributes.
     def __init__(self, rows=1, cols=1, CellType=Cell):
-        # idk if this is the right way to do it - what if cell is defined after ?
-        self.rows = rows
+
+        self.rows = rows  # TODO: Make this a property - need it to update iff matrix is changed
         self.cols = cols
 
         # CellType should be a "new-style class" that is, user-defined. Object is the default superclass -> Good check to have that the class is user defined and we are not trying to pass"int"
-
         # https://stackoverflow.com/questions/54867/what-is-the-difference-between-old-style-and-new-style-classes-in-python
-        if issubclass(CellType, object):
 
-            self.CellType = CellType
-
-        else:
-            self.CellType = Cell
+        # Then we need to check if CellType has all the attributes of a Cell necessary to make it work.
+        # if issubclass(CellType, object) and all(
+        #        hasattr(CellType, attr) for attr in ["alive", "is_alive", "update_cell"]) \
+        #       and callable(hasattr(["is_alive",
+        #                  "update_cell"])):  # TODO: This should be its own decorator. How do iI get this to check at each function where CellType is called, but ONLY ONCE.
+        self.CellType = CellType
+        # else:
+        #     self.CellType = Cell
 
         self.matrix = [[CellType() for _ in range(self.cols)] for _ in range(self.rows)]
+
+        @classmethod
+        def tuple_matrix(self):
+            return tuple(self.matrix)
+
+        self.time_step = 0
+        self.cells_of_interest = set()
 
     def __str__(self):
         tissue_str = ""
         for row in self.matrix:
-            tissue_str += f'{"".join(map(lambda x: str(x), row))}\n'  # might not be most efficient way to convert everything.
+            tissue_str += f'{"".join(map(lambda x: self.CellType.__str__(x), row))}\n'  # mtehright not be most efficient way to convert everything
         return tissue_str
 
     def __getitem__(self, idx):
@@ -179,9 +184,12 @@ class Tissue:
 
             except IOError:
                 self.matrix = []
+        # TODO: Override attributes
 
     # TODO: Change ">" depending on whether it is probability of being alive or dead.
     # TODO: Try opti with for loop or list comprehension
+
+    @time_profile
     def seed_random(self, probability, CellType):
         # We want to avoid having to call __init__ at each iteration of the coming loop so we define the two possible states:
 
@@ -193,8 +201,95 @@ class Tissue:
         # - The lambda function is applied to each element of the row. It calls the random method of the random module.
         # which returns a float from 0 to 1. if this number is bigger than the PROBABILITY OF BEING DEAD, then CellType
         # will be instantiated as alive. Otherwise, CellType is instantiated as Dead.
+        self.CellType = CellType
 
-        self.matrix = [list(map(lambda x: CellType(True) if random() > probability else CellType(False), row)) for row in
-                       self.matrix]
+        # Maintain set of alive cells straight from the seed.
 
-# TODO: CellType check decorator cos I need it everywhere
+        # Update the border
+
+        # Update the rows
+        for i, row in enumerate(self.matrix):
+            for j, status in enumerate(row):  # TODO: Am I taking negative indexes?
+                if random() > probability:
+                    self.matrix[i][j] = CellType(True)
+                    self.cells_of_interest.update([(i, j)])
+
+                else:
+                    self.matrix[i][j] = CellType(False)
+
+        # self.matrix = [list(map(lambda x: CellType(True) if random() > probability else CellType(False), row)) for row in self.matrix] - This is 3 times faster than above...
+        self.rows = len(self.matrix[0])
+        self.cols = len(self.matrix)
+
+    @time_profile
+    @space_profile
+    def next_state(self):
+        # Store alive cells in a set.
+        # Class property is set of alive cells but only called once.
+        # Boundary condition is dead cells.
+        # Set of alive. Each new turn del. based on rule set of cell; Set an attribute in each cell that returns a flag if one
+        # Interpret booleans as an int with astype.
+
+        def surroundings(input_matrix, row, column):
+            """Takes in the current matrix and returns the surroundings of the Cell"""
+
+            # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
+            # Make sure in other sections of the code that these cells than never be brought to life.
+            # Make sure that custom functions can't bring them to life either and mess everything up.
+            return [[input_matrix[i][j] if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j) else self.CellType(
+                    False) for i in
+                 range(row - 1, row + 2)] for j in range(column - 1, column + 2)]
+
+        dead_cell = self.CellType(False)
+        outline_row = [dead_cell] * (self.rows + 2)
+        outline_column = [dead_cell] * (self.cols + 2)
+        print(list(str(self).split("\n")))
+        tmp_matrix = [[(lambda x: self.CellType(False) if x == "." else self.CellType(True))(x) for eleù for x in elem.split() elem in list(str(self).split("\n"))] #TODO fix and remove final element
+        print(tmp_matrix, len(tmp_matrix))
+        tmp_matrix = outline_row + [list(a) for a in zip(outline_column, tmp_matrix, outline_column)] + outline_row
+
+        for coordinate in list(self.cells_of_interest):
+            row = coordinate[0]
+            col = coordinate[1]
+
+            # Check if 3 or more neighbours of the neighbours are in the set.
+            def get_neighbours(r, c):
+                return [(i, j) for i in range(r - 1, r + 2) for j in range(c - 1, c + 2)
+                        if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j)]
+
+            neighbours = get_neighbours(row, col)
+
+            # get the neighbour of the neighbours and check if they are in the set.
+            # update the cel
+            count = 0
+            count = sum(1 for neighbour in neighbours if neighbour in self.cells_of_interest)
+            if self.CellType == Cell or self.CellType == Cancer and count == 3:
+                continue
+            else:
+                for neighbour in neighbours:
+                    i = neighbour[0]
+                    j = neighbour[1]
+
+                    try:
+                        tmp_matrix[i][j].alive = tmp_matrix[i][j].rule_set[count]
+                        state = tmp_matrix[i][j].alive
+                        if state:
+                            self.cells_of_interest.update([neighbour])
+                        else:
+                            self.cells_of_interest.discard(neighbour)
+
+                    except IndexError:
+                        continue  # TODO FIX T
+
+            self.matrix = tmp_matrix
+
+        # instead of recreating update tmp matrix with changes
+
+        # self.time_step += 1
+
+        # set de toutes les cellules vivantes et leurs neighbours - a chaque iteration, rajouter les cellules qui ont change de state au set (comment track)
+
+        # TODO: CellType check decorator cos I need it everywhere
+
+        # Idea 1 : matrix check for each neighbour -> time out .
+        # Idea 2: check is neighbours of neighbours are in the set. If not continue.

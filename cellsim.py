@@ -55,13 +55,11 @@ class Cell:
 
     """
     overpopulation = 4
-    rule_set = {key: (False if key != 4 else True) for key in
-                range(9)}
+    rule_set = {0: False,1: False,2: 0 ,3: True,4: False,5: False,6: False,7:False,8:False}
 
     def __init__(self, alive=False):
         # Error Handling
         self.alive = alive
-        self.overpopulation = 4
 
     def __str__(self):
         if self.alive:
@@ -73,9 +71,11 @@ class Cell:
         return self.alive
 
     def update_cell(self, surroundings):
-        alive_cells = sum(1 for row in surroundings for elem in row if elem.is_alive == True)
-        self.alive = self.rule_set.get(alive_cells)
-        return 
+        alive_cells = sum(1 for row in surroundings for elem in row if elem.is_alive() == True)
+        # print(alive_cells)
+        # print(self.rule_set.get(alive_cells))
+        if self.rule_set.get(alive_cells) != 0:
+            self.alive = self.rule_set.get(alive_cells)
 
 
 # TODO: add this function
@@ -126,6 +126,14 @@ class Tissue:
             self.CellType = Cell
 
         self.matrix = [[CellType() for _ in range(self.cols)] for _ in range(self.rows)]
+
+    # @property
+    # def matrix(self):
+    #     return self._matrix
+    #
+    # @matrix.setter
+    # def matrix(self, val):
+    #     self._matrix = val
 
     def __str__(self):
         tissue_str = ""
@@ -218,11 +226,12 @@ class Tissue:
                  else input_matrix[column][row] for row_idx in range(row - 1, row + 2)]
                 for column_idx in range(column - 1, column + 2)]  # Improve readability
 
+        new_matrix = copy.deepcopy(self.matrix)
         for i in range(self.cols):
             # I really don't want to do this - should set an attribute alive cells and only search through them but yeah.
             for j in range(self.rows):
                 print(surroundings(self.matrix, j, i))
-                self.CellType.update_cell(Cell, surroundings=surroundings(self.matrix, j, i))
+                self.matrix[i][j].update_cell(surroundings=surroundings(self.matrix, j, i))
 
 
 # TODO: CellType check decorator cos I need it everywhere
