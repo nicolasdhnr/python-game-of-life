@@ -236,17 +236,19 @@ class Tissue:
             # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
             # Make sure in other sections of the code that these cells than never be brought to life.
             # Make sure that custom functions can't bring them to life either and mess everything up.
-            return [[input_matrix[i][j] if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j) else self.CellType(
+            return [
+                [input_matrix[i][j] if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j) else self.CellType(
                     False) for i in
                  range(row - 1, row + 2)] for j in range(column - 1, column + 2)]
 
         dead_cell = self.CellType(False)
         outline_row = [dead_cell] * (self.rows + 2)
         outline_column = [dead_cell] * (self.cols + 2)
-        print(list(str(self).split("\n")))
-        tmp_matrix = [[(lambda x: self.CellType(False) if x == "." else self.CellType(True))(x) for eleù for x in elem.split() elem in list(str(self).split("\n"))] #TODO fix and remove final element
-        print(tmp_matrix, len(tmp_matrix))
-        tmp_matrix = outline_row + [list(a) for a in zip(outline_column, tmp_matrix, outline_column)] + outline_row
+        print(str(self).rstrip("\n").split("\n"))
+        tmp_matrix = [[self.CellType(False) if x == "." else self.CellType(True) for x in elem] for elem in
+                      str(self).rstrip("\n").split("\n")]
+
+        # add dead row and column
 
         for coordinate in list(self.cells_of_interest):
             row = coordinate[0]
@@ -264,7 +266,7 @@ class Tissue:
             count = 0
             count = sum(1 for neighbour in neighbours if neighbour in self.cells_of_interest)
             if self.CellType == Cell or self.CellType == Cancer and count == 3:
-                continue
+                pass
             else:
                 for neighbour in neighbours:
                     i = neighbour[0]
