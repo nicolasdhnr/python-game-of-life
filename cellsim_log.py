@@ -58,7 +58,7 @@ class Cell:
     """
 
     def __init__(self, alive=False):
-        # Error Handling
+        # TODO: Error Handling
         self.alive = alive
 
     def is_alive(self):
@@ -72,8 +72,10 @@ class Cell:
 
     @property
     def rule_set(self):
-        return {0: False, 1: False, 2: self.is_alive(), 3: True, 4: False, 5: False, 6: False, 7: False, 8: False,
-                9: False}
+        return {0: False, 1: False, 2: self.is_alive(), 3: True, 4: False, 5: False, 6: False, 7: False, 8: False}
+
+    def change_element(self, state):
+        self.alive = state
 
     def update_cell(self, surroundings):
         alive_cells = sum(1 for row in surroundings for elem in row if elem.is_alive())
@@ -133,7 +135,7 @@ class Tissue:
             return tuple(self.matrix)
 
         self.time_step = 0
-        self.cells_of_interest = set()
+        self.alive_cells = set()
 
     def __str__(self):
         tissue_str = ""
@@ -147,6 +149,10 @@ class Tissue:
 
     def __setitem__(self, key, value):
         """ Defines the setter for the Tissue class"""
+        # TODO: error handling here so you can't add non celltype and maybe not outside the grid
+        if value == self.CellType(True):
+            self.alive_cells.add()
+
         self.matrix[key] = value
 
     def seed_from_matrix(self, seed_matrix):  # Should this be a class method?
@@ -168,7 +174,8 @@ class Tissue:
         :return
         """
         # TODO: Include relative path of filename.
-        self.matrix.clear()  # Is this going to modify all instances too? Do we want it to? Should we use .clear()?
+        self.matrix.clear()
+
         if ".txt" not in filename:
             self.matrix = []
         else:
@@ -189,6 +196,26 @@ class Tissue:
     # TODO: Change ">" depending on whether it is probability of being alive or dead.
     # TODO: Try opti with for loop or list comprehension
 
+    @staticmethod
+    def surroundings(input_matrix, row, column):
+        """Takes in the current matrix and returns the surroundings of the Cell"""
+
+        # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
+        # Make sure in other sections of the code that these cells than never be brought to life.
+        # Make sure that custom functions can't bring them to life either and mess everything up.
+        return [
+            [input_matrix[i][j] if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j) else self.CellType(
+                False) for i in
+             range(row - 1, row + 2)] for j in range(column - 1, column + 2)]
+
+    @staticmethod
+    def get_neighbours(r, c):
+        rng_r = range(r - 1, r + 2)
+        rng_c = range(c - 1, c + 2)
+        a = [(i, j) for i in rng_r for j in rng_c]  # TODO might be faster if i define static method
+        del a[5] # 5th element is always (c, r). Also del is faster than .remove
+        return set(a)
+
     @time_profile
     def seed_random(self, probability, CellType):
         # We want to avoid having to call __init__ at each iteration of the coming loop so we define the two possible states:
@@ -204,7 +231,6 @@ class Tissue:
         self.CellType = CellType
 
         # Maintain set of alive cells straight from the seed.
-
         # Update the border
 
         # Update the rows
@@ -212,14 +238,14 @@ class Tissue:
             for j, status in enumerate(row):  # TODO: Am I taking negative indexes?
                 if random() > probability:
                     self.matrix[i][j] = CellType(True)
-                    self.cells_of_interest.update([(i, j)])
+                    self.alive_cells.add((i, j))
 
                 else:
                     self.matrix[i][j] = CellType(False)
 
         # self.matrix = [list(map(lambda x: CellType(True) if random() > probability else CellType(False), row)) for row in self.matrix] - This is 3 times faster than above...
-        self.rows = len(self.matrix[0])
-        self.cols = len(self.matrix)
+        self.rows = len(self.matrix)
+        self.cols = len(self.matrix[0])
 
     @time_profile
     @space_profile
@@ -230,60 +256,45 @@ class Tissue:
         # Set of alive. Each new turn del. based on rule set of cell; Set an attribute in each cell that returns a flag if one
         # Interpret booleans as an int with astype.
 
-        def surroundings(input_matrix, row, column):
-            """Takes in the current matrix and returns the surroundings of the Cell"""
+        # We want to create a "Fake outline" of dead cells for the grid,
+        # to avoid having to isolate the columns with if statements.
+        # Dead cells on the outline will all be the same object to avoid extra space consumption and time to instantiate:
 
-            # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
-            # Make sure in other sections of the code that these cells than never be brought to life.
-            # Make sure that custom functions can't bring them to life either and mess everything up.
-            return [
-                [input_matrix[i][j] if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j) else self.CellType(
-                    False) for i in
-                 range(row - 1, row + 2)] for j in range(column - 1, column + 2)]
+        # dead_cell = self.CellType(False)
+        # outline_row = [dead_cell] * (self.cols + 2)
+        # temp_str = str(self).split("\n")
 
-        dead_cell = self.CellType(False)
-        outline_row = [dead_cell] * (self.rows + 2)
-        outline_column = [dead_cell] * (self.cols + 2)
-        print(str(self).rstrip("\n").split("\n"))
-        tmp_matrix = [[self.CellType(False) if x == "." else self.CellType(True) for x in elem] for elem in
-                      str(self).rstrip("\n").split("\n")]
+        # TODO: gets fucked up as states go on
 
-        # add dead row and column
+        # tmp_matrix = [[self.CellType(False) if x == "." else self.CellType(True) for x in elem] for elem in temp_str]
+        # Add row
+        # tmp_matrix = [outline_row] + [[dead_cell] + row + [dead_cell] for row in tmp_matrix] + [outline_row] # TODO: Need to fix the neighbourr problem cos they are prolly fcked up rn
+        alive_cells_copy = self.alive_cells.copy()
 
-        for coordinate in list(self.cells_of_interest):
-            row = coordinate[0]
-            col = coordinate[1]
+        # TODO: Try with map, try to replace double for loop.
+        # Linearly search the cells. Is it faster to generate the coordinates before maybe... # TODO: Try this
+        for row in range(1, self.rows - 1):
+            for col in range(1, self.cols - 1):
+                element = self.matrix[row][col]
+                state1 = element.alive
+                neighbours = self.get_neighbours(row, col) #TODO: This is not gonna work...
+                count = len(neighbours.intersection(self.alive_cells))
 
-            # Check if 3 or more neighbours of the neighbours are in the set.
-            def get_neighbours(r, c):
-                return [(i, j) for i in range(r - 1, r + 2) for j in range(c - 1, c + 2)
-                        if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j)]
+                if not state1 and (count == 0): # TODO: is this a good assumption to make
+                    continue
 
-            neighbours = get_neighbours(row, col)
+                # if self.CellType == Cell or self.CellType == Cancer and count == 3:
+                #     continue
+                else:
+                    element.alive = element.rule_set[count]
+                    state2 = element.alive
+                    diff = (state2 != state1)
+                    if diff:
+                        if state2:
+                            self.alive_cells.add((row, col))
 
-            # get the neighbour of the neighbours and check if they are in the set.
-            # update the cel
-            count = 0
-            count = sum(1 for neighbour in neighbours if neighbour in self.cells_of_interest)
-            if self.CellType == Cell or self.CellType == Cancer and count == 3:
-                pass
-            else:
-                for neighbour in neighbours:
-                    i = neighbour[0]
-                    j = neighbour[1]
-
-                    try:
-                        tmp_matrix[i][j].alive = tmp_matrix[i][j].rule_set[count]
-                        state = tmp_matrix[i][j].alive
-                        if state:
-                            self.cells_of_interest.update([neighbour])
                         else:
-                            self.cells_of_interest.discard(neighbour)
-
-                    except IndexError:
-                        continue  # TODO FIX T
-
-            self.matrix = tmp_matrix
+                            self.alive_cells.discard((row, col))
 
         # instead of recreating update tmp matrix with changes
 

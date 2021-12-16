@@ -57,17 +57,17 @@ def space_profile(func):
 # print(tissue.CellType)
 #
 #
-tissue = cellsim_log.Tissue(10, 40, cellsim_log.Cell)
-test_matrix = list()
-for i in range(10):
-    test_matrix.append([])
-    for j in range(40):
-        test_matrix[i].append(cellsim_log.Cell(False))
-print(test_matrix)
-
-test_matrix[5][5] = cellsim_log.Cell(True)
-test_matrix[5][6] = cellsim_log.Cell(True)
-test_matrix[5][7] = cellsim_log.Cell(True)
+# tissue = cellsim_log.Tissue(10, 40, cellsim_log.Cell)
+# test_matrix = list()
+# for i in range(10):
+#     test_matrix.append([])
+#     for j in range(40):
+#         test_matrix[i].append(cellsim_log.Cell(False))
+# print(test_matrix)
+#
+# test_matrix[5][5] = cellsim_log.Cell(True)
+# test_matrix[5][6] = cellsim_log.Cell(True)
+# test_matrix[5][7] = cellsim_log.Cell(True)
 # tissue.seed_from_matrix(test_matrix)
 # print(tissue)
 
@@ -80,16 +80,16 @@ test_matrix[5][7] = cellsim_log.Cell(True)
 # tissue.seed_random(0.5, cellsim.Cell)
 # # print(tissue)
 
-tissue = cellsim_log.Tissue(10, 10)
+tissue = cellsim_log.Tissue(1000, 1000)
 
 tissue.seed_random(0.5, cellsim_log.Cell)
 # print(tissue.cells_of_interest)
 
 
-for i in range(6):
+for i in range(100):
     # os.system('clear') #will be os.system('cls')
     tissue.next_state()
-    print(tissue)
+    # print(tissue)
 
 
 
