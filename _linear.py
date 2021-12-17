@@ -148,6 +148,7 @@ class Tissue:
     def __setitem__(self, key, value):
         """ Defines the setter for the Tissue class"""
         self.matrix[key] = value
+        #TODO: update rows and columns (make a decorator)
 
     def seed_from_matrix(self, seed_matrix):  # Should this be a class method?
         """ Overwrite the four attribute variables using a single argument.

@@ -1,9 +1,12 @@
-import cellsim_log
+import cProfile
+import io
 import os
-import time
+import pstats
+
 import psutil
-import cProfile, pstats, io
-import copy
+import unittest
+
+import cellsim_log
 
 
 # ========== Profilers ==========
@@ -48,28 +51,43 @@ def space_profile(func):
     return wrapper
 
 
-# print("==========Tissue==========")
-#
-# tissue = cellsim.Tissue()
-# print(tissue.matrix)
-# print(tissue.rows)
-# print(tissue.cols)
-# print(tissue.CellType)
-#
-#
-# tissue = cellsim_log.Tissue(10, 40, cellsim_log.Cell)
-# test_matrix = list()
-# for i in range(10):
-#     test_matrix.append([])
-#     for j in range(40):
-#         test_matrix[i].append(cellsim_log.Cell(False))
-# print(test_matrix)
-#
-# test_matrix[5][5] = cellsim_log.Cell(True)
-# test_matrix[5][6] = cellsim_log.Cell(True)
-# test_matrix[5][7] = cellsim_log.Cell(True)
-# tissue.seed_from_matrix(test_matrix)
-# print(tissue)
+# ===============================================Tissue Test=====================================================
+print("==========Generating a matrix ==========")
+
+tissue = cellsim_log.Tissue()
+print(tissue.matrix)
+print(tissue.rows == len(tissue.matrix))
+print(tissue.cols == len(tissue.matrix[0]))
+print(tissue.CellType)
+
+print("========== String Method ==========")
+tissue = cellsim_log.Tissue(1000, 1000,cellsim_log.Cell)
+tissue = str(tissue)
+
+
+print("========== Getter and Setter ==========")
+tissue = cellsim_log.Tissue(6,3,cellsim_log.Cell)
+tissue[2][0] = cellsim_log.Cell(True)
+tissue[2][1] = cellsim_log.Cell(False)
+tissue[2][2] = cellsim_log.Cell(True)
+print(tissue)
+print(tissue[2][0])
+print(tissue[2][1])
+print(tissue[2][2])
+tissue[4] = [cellsim_log.Cell(True), cellsim_log.Cell(True),cellsim_log.Cell(True)]
+print(tissue)
+
+print("========== Seed From Matrix ==========")
+
+tissue = cellsim_log.Tissue(10, 40, cellsim_log.Cell)
+test_matrix = [[cellsim_log.Cell(False) for i in range(1000)] for j in range(1000)]
+
+test_matrix[5][5] = cellsim_log.Cell(True)
+test_matrix[5][6] = cellsim_log.Cell(True)
+test_matrix[5][7] = cellsim_log.Cell(True)
+tissue.seed_from_matrix(test_matrix)
+print(tissue.alive_cells)
+
 
 #
 # tissue = cellsim.Tissue(10, 40, cellsim.Cell)
@@ -86,11 +104,10 @@ tissue.seed_random(0.5, cellsim_log.Cell)
 # print(tissue.cells_of_interest)
 
 
-for i in range(100):
+for i in range(5):
     # os.system('clear') #will be os.system('cls')
     tissue.next_state()
     # print(tissue)
-
 
 
 #     time.sleep(0.1)
@@ -110,13 +127,3 @@ for i in range(100):
 # a[2] = "lmao"
 # print(b[2])
 # print(id(a[2]), id(b[2]))
-
-def surroundings(input_matrix, row, column):
-    """Takes in the current matrix and returns the surroundings of the Cell"""
-
-    # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
-    # Make sure in other sections of the code that these cells than never be brought to life.
-    # Make sure that custom functions can't bring them to life either and mess everything up.
-    return [[input_matrix[i][j] for i in range(row - 1, row + 2)] for j in range(column - 1, column + 2)]
-
-

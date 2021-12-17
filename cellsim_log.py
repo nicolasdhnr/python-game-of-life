@@ -1,20 +1,19 @@
-import copy
 import os
 import time
 import psutil
 import cProfile, pstats, io
 
+
 # TODO: DON'T IMPORT WHOLE MODULE
 
 #  ====================================Profilers =============================================
 # Time profiler
-import temp as temp
-
 
 def time_profile(fnc):
     """A decorator that uses cProfile to profile a function"""
 
     def inner(*args, **kwargs):
+        print("Measuring", fnc.__name__, "time...")
         pr = cProfile.Profile()
         pr.enable()
         retval = fnc(*args, **kwargs)
@@ -65,25 +64,25 @@ class Cell:
         return self.alive
 
     def __str__(self):
-        if self.is_alive():
+        if self.alive:
             return "O"
         else:
             return "."
 
     @property
     def rule_set(self):
-        return {0: False, 1: False, 2: self.is_alive(), 3: True, 4: False, 5: False, 6: False, 7: False, 8: False}
+        return {0: False, 1: False, 2: self.alive, 3: True, 4: False, 5: False, 6: False, 7: False, 8: False}
 
     def change_element(self, state):
         self.alive = state
 
     def update_cell(self, surroundings):
-        alive_cells = sum(1 for row in surroundings for elem in row if elem.is_alive())
-        # print(self.rule_set.get(alive_cells))
+        alive_cells = sum(1 for row in surroundings for elem in row if elem.alive)
+        # Above function does not ignore the center element so:
+        if self.alive:
+            alive_cells -= 1
+
         self.alive = self.rule_set[alive_cells]
-
-
-# TODO: add this function
 
 
 class Cancer(Cell):
@@ -108,40 +107,84 @@ class Tissue:
             setitem:
             seed_from_matrix:
             seed_from_file
-
     """
 
     def __init__(self, rows=1, cols=1, CellType=Cell):
 
-        self.rows = rows  # TODO: Make this a property - need it to update iff matrix is changed
+        self.rows = rows
         self.cols = cols
 
-        # CellType should be a "new-style class" that is, user-defined. Object is the default superclass -> Good check to have that the class is user defined and we are not trying to pass"int"
-        # https://stackoverflow.com/questions/54867/what-is-the-difference-between-old-style-and-new-style-classes-in-python
-
-        # Then we need to check if CellType has all the attributes of a Cell necessary to make it work.
-        # if issubclass(CellType, object) and all(
-        #        hasattr(CellType, attr) for attr in ["alive", "is_alive", "update_cell"]) \
-        #       and callable(hasattr(["is_alive",
-        #                  "update_cell"])):  # TODO: This should be its own decorator. How do iI get this to check at each function where CellType is called, but ONLY ONCE.
-        self.CellType = CellType
-        # else:
-        #     self.CellType = Cell
+        # CellType Error Checking
+        if issubclass(CellType, Cell):
+            self.CellType = CellType
+        # If the CellType is not a subclass of cell, checks if the CellType is a user defined class (subclass object) and
+        # has the required functions and attributes.
+        elif issubclass(CellType, object) \
+                and all(hasattr(CellType, attr) for attr in ["alive", "is_alive", "update_cell"]) \
+                and callable(hasattr(CellType, attr) for attr in ["is_alive", "update_cell"]):
+            self.CellType = CellType
+        else:
+            self.CellType = Cell
 
         self.matrix = [[CellType() for _ in range(self.cols)] for _ in range(self.rows)]
+        self.alive_cells = set()  # Stores the coordinates of alive cells
 
-        @classmethod
-        def tuple_matrix(self):
-            return tuple(self.matrix)
+        # Define whether the assumptions used in "next_state()" will hold:
 
-        self.time_step = 0
-        self.alive_cells = set()
+        # Find the rules of the Cell:
+        self.ruleset = {}
+        self._death = set()
+        self._stasis = set()
+        self._backtolife = set()
+
+    def get_rule_set(self):
+        alive_cell = self.CellType(True)  # I define only one alive cell and one dead cell for the neighbours of these
+        dead_cell = self.CellType(False)
+        self.ruleset = {}
+        for state in (True, False):
+            for living_neighbours in range(0, 9):
+                neighbour_count = 0
+                test_case_list = []
+                for i in range(3):
+                    test_case_list.append([])
+                    for j in range(3):
+                        if neighbour_count < living_neighbours:
+                            test_case_list[i].append(alive_cell)
+                            neighbour_count += 1
+                        else:
+                            test_case_list[i].append(dead_cell)
+
+                # Assign the center element to be a dead or alive Cell depending on state:
+                test_case_list[1][1] = self.CellType(state)
+                center_element = test_case_list[1][1]
+                center_element.update_cell(test_case_list)
+                self.ruleset[(neighbour_count, state)] = center_element.alive
+                self.ruleset = {key: self.ruleset[key] for key in sorted(self.ruleset.keys(), key=lambda ele: ele[0])}
+
+    def find_pattern(self):
+        cases = [self._death, self._backtolife, self._stasis]
+        for elem in cases:  # Clear all the previous sets.
+            elem.clear()
+
+        for i in range(9):
+            alive_case = self.ruleset[(i, True)]
+            dead_case = self.ruleset[(i, False)]
+
+            if alive_case == True and dead_case == False:
+                self._stasis.add(i)
+            elif alive_case == True and dead_case == True:
+                self._backtolife.add(i)
+            elif alive_case == False and dead_case == False:
+                self._death.add(i)
+            else:
+                continue  # One more possibility but we don't want to store it.
+
+    @staticmethod
+    def clear_rules(self):
+        pass
 
     def __str__(self):
-        tissue_str = ""
-        for row in self.matrix:
-            tissue_str += f'{"".join(map(lambda x: self.CellType.__str__(x), row))}\n'  # mtehright not be most efficient way to convert everything
-        return tissue_str
+        return "\n".join(["".join([str(x) for x in row]) for row in self.matrix])
 
     def __getitem__(self, idx):
         """ Defines the getter for the Tissue class"""
@@ -149,26 +192,31 @@ class Tissue:
 
     def __setitem__(self, key, value):
         """ Defines the setter for the Tissue class"""
-        # TODO: error handling here so you can't add non celltype and maybe not outside the grid
-        if value == self.CellType(True):
-            self.alive_cells.add()
+        try:
+            if len(value) == len(self.matrix[key]):
+                self.matrix[key] = value
 
-        self.matrix[key] = value
+        except IndexError:
+            pass
 
+    @time_profile
     def seed_from_matrix(self, seed_matrix):  # Should this be a class method?
         """ Overwrite the four attribute variables using a single argument.
         :param seed_matrix:
         """
-        # TODO: Enforce the arguments of seed matrix to be valid:
-        # TODO: rows and columns should update.
+        self.matrix = []
+        self.alive_cells = set()
+        self.rows = len(seed_matrix)
+        self.cols = len(seed_matrix[0])
+        for index, row in enumerate(seed_matrix):
+            self.matrix += [list(tuple(row))]
+            for j in range(self.rows):
+                if row[j].alive:
+                    self.alive_cells.add((index, j))
 
-        self.matrix = copy.deepcopy(seed_matrix)
-        self.cols = len(self.matrix)
-        self.rows = len(self.matrix[0])  # Check if this overrides properly
-
+    @time_profile
     def seed_from_file(self, filename, CellType=Cell):
         """ This function takes a filename and CellType as input and changes the self.matrix attribute to seed.
-
         :argument
 
         :return
@@ -196,24 +244,15 @@ class Tissue:
     # TODO: Change ">" depending on whether it is probability of being alive or dead.
     # TODO: Try opti with for loop or list comprehension
 
-    @staticmethod
-    def surroundings(input_matrix, row, column):
-        """Takes in the current matrix and returns the surroundings of the Cell"""
-
-        # If the coordinates go higher or lower than self.row or self.column, assign a Dead Cell to that location.
-        # Make sure in other sections of the code that these cells than never be brought to life.
-        # Make sure that custom functions can't bring them to life either and mess everything up.
-        return [
-            [input_matrix[i][j] if (0 < i < self.rows - 1 and 0 < j < self.cols - 1 and i != j) else self.CellType(
-                False) for i in
-             range(row - 1, row + 2)] for j in range(column - 1, column + 2)]
-
-    @staticmethod
-    def get_neighbours(r, c):
-        rng_r = range(r - 1, r + 2)
-        rng_c = range(c - 1, c + 2)
-        a = [(i, j) for i in rng_r for j in rng_c]  # TODO might be faster if i define static method
-        del a[5] # 5th element is always (c, r). Also del is faster than .remove
+    def get_neighbours(self, r, c):
+        if 0 < r < self.rows - 1:
+            ri = (0, -1, 1)  # Center of grid
+        elif r > 0:
+            ri = (0, -1)  # Selects the last row, so can only find neighbours around.
+        else:
+            ri = (0, 1)
+        ci = (0, -1, 1) if 0 < c < self.rows - 1 else ((0, -1) if c > 0 else (0, 1))
+        a = [(r + i, c + j) for i in ri for j in ci if not i == j == 0]
         return set(a)
 
     @time_profile
@@ -228,14 +267,19 @@ class Tissue:
         # - The lambda function is applied to each element of the row. It calls the random method of the random module.
         # which returns a float from 0 to 1. if this number is bigger than the PROBABILITY OF BEING DEAD, then CellType
         # will be instantiated as alive. Otherwise, CellType is instantiated as Dead.
-        self.CellType = CellType
 
+        self.CellType = CellType
+        self.get_rule_set()
+        self.find_pattern()
         # Maintain set of alive cells straight from the seed.
+        row_rng = range(self.rows)
+
         # Update the border
 
-        # Update the rows
-        for i, row in enumerate(self.matrix):
-            for j, status in enumerate(row):  # TODO: Am I taking negative indexes?
+       
+
+        for i in range(self.rows):  # use map instead
+            for j in range(self.cols):
                 if random() > probability:
                     self.matrix[i][j] = CellType(True)
                     self.alive_cells.add((i, j))
@@ -250,9 +294,7 @@ class Tissue:
     @time_profile
     @space_profile
     def next_state(self):
-        # Store alive cells in a set.
-        # Class property is set of alive cells but only called once.
-        # Boundary condition is dead cells.
+
         # Set of alive. Each new turn del. based on rule set of cell; Set an attribute in each cell that returns a flag if one
         # Interpret booleans as an int with astype.
 
@@ -271,22 +313,27 @@ class Tissue:
         # tmp_matrix = [outline_row] + [[dead_cell] + row + [dead_cell] for row in tmp_matrix] + [outline_row] # TODO: Need to fix the neighbourr problem cos they are prolly fcked up rn
         alive_cells_copy = self.alive_cells.copy()
 
-        # TODO: Try with map, try to replace double for loop.
         # Linearly search the cells. Is it faster to generate the coordinates before maybe... # TODO: Try this
-        for row in range(1, self.rows - 1):
-            for col in range(1, self.cols - 1):
+
+        main_body_range = range(1, self.rows - 1)
+
+        for row in range(self.rows):
+            for col in range(self.cols):
                 element = self.matrix[row][col]
                 state1 = element.alive
-                neighbours = self.get_neighbours(row, col) #TODO: This is not gonna work...
-                count = len(neighbours.intersection(self.alive_cells))
+                neighbours = self.get_neighbours(row, col)  # TODO: This is not gonna work...
+                count = len(neighbours.intersection(alive_cells_copy))
 
-                if not state1 and (count == 0): # TODO: is this a good assumption to make
+                # Define conditions to skip:
+                if count in self._stasis:
                     continue
-
-                # if self.CellType == Cell or self.CellType == Cancer and count == 3:
+                # elif not state1 and count in self._death:
                 #     continue
+                # elif state1 and count in self._backtolife:
+                #     continue
+
                 else:
-                    element.alive = element.rule_set[count]
+                    element.alive = self.ruleset[(count, state1)]
                     state2 = element.alive
                     diff = (state2 != state1)
                     if diff:
