@@ -1,6 +1,7 @@
 from random import random
 
-# ===============================================Start of Code=====================================================
+
+# =============================================== CellTypes =====================================================
 
 class Cell:
     """ CellType to be added to Tissue matrix (defined below).
@@ -62,6 +63,7 @@ class Tissue:
             seed_from_matrix:
             seed_from_file
     """
+
 
     def __init__(self, rows=1, cols=1, CellType=Cell):
 
@@ -168,6 +170,7 @@ class Tissue:
         # Reset the alive cells:
         self.alive_cells = set()
 
+    
     def __str__(self):
         return "\n".join(["".join([str(x) for x in row]) for row in self.matrix])
 
@@ -216,7 +219,7 @@ class Tissue:
 
         File must only contain "." and another character of choice.
         Arguments:
-            Filename (string) - Name of file to be found or relative path. 
+            Filename (string) - Name of file to be found or relative path.
         """
 
         self.clear_attributes()
@@ -246,16 +249,17 @@ class Tissue:
         except IOError:
             pass
 
-
-
     def seed_random(self, probability, CellType):
         """ Updates the matrix with dead or alive cells pseudo-randomly, according to confluency.
 
         Arguments:
+            probability (float) : Number between 0 and 1 representing the probability of a cell being alive.
+            CellType (class) : Cell Class to be used to fill the Tissue.
 
         """
 
         self.clear_attributes()
+
         self.CellType = CellType
         self.get_rule_set()
         self.find_pattern()
@@ -272,30 +276,50 @@ class Tissue:
         self.rows = len(self.matrix)
         self.cols = len(self.matrix[0])
 
-    def get_neighbours(self, r, c):
+    def get_neighbours(self, y_coordinate, x_coordinate):
+        """ The function takes the coordinates of a of point and returns of list of coordinates of its neighbours
 
-        if 0 < r < self.rows:
-            ri = (0, -1, 1)  # Center of grid
-        elif r > 0:
-            ri = (0, -1)  # Selects the last row, so can only find neighbours around.
+        Arguments:
+            y coordinates (int): Y coordinate in a 2D array.
+            x coordinate (int): X coordinate in a 2D array
+
+        Returns:
+            a (list of tuples) : list of tuples representing the coordinates of the neighbouring cells. [(y,x)]
+        """
+        if 0 < y_coordinate < self.rows:
+            xi = (0, -1, 1)  # The applies to elements in the center of the grid
+        elif y_coordinate > 0:
+            xi = (0, -1)  # Applies to the last row. The neighbours can only be above.
         else:
-            ri = (0, 1)
-        ci = (0, -1, 1) if 0 < c < self.cols else ((0, -1) if c > 0 else (0, 1))
-        a = [[r + i, c + j] for i in ri for j in ci if not i == j == 0]
+            xi = (0, 1)  # Applies the the first row, neighbours can onl be below.
+
+        # Apply same logic for the columns
+        yi = (0, -1, 1) if 0 < x_coordinate < self.cols else ((0, -1) if x_coordinate > 0 else (0, 1))
+        a = [[y_coordinate + i, x_coordinate + j] for i in xi for j in yi if not i == j == 0]
         return a
 
     @staticmethod
-    def alive_neighbour_count(list_of_neighbours, alive_cells_copy):
+    def alive_neighbour_count(list_of_neighbours, alive_cells):
+        """ Returns an integer of the number of alive neighbours
+
+        Arguments:
+            list_of_neighbours (list): list of tuples containing the coordinates of the neighbours (y,x).
+            alive_cells (set): Set containing tuples of the coordinates of the alive cells.
+        """
         neighbours_set = set([tuple(x) for x in list_of_neighbours])
-        neighbour_count = len(neighbours_set.intersection(alive_cells_copy))
+        neighbour_count = len(neighbours_set.intersection(alive_cells))
         return neighbour_count
 
     def update_element(self, row, col, count):
-        state1 = self.matrix[row][col].alive
+        """
+        """
+        state1 = self.matrix[row][col].alive  # Current state of the cell
         cell = self.matrix[row][col]
         cell.alive = self.ruleset[(count, state1)]
-        state2 = cell.alive
+        state2 = cell.alive  # Updated state of the cell
         diff = (state2 != state1)
+
+        # Avoid calling add and discard in unnecessary situations:
         if diff:
             if state2:
                 self.alive_cells.add((row, col))
@@ -303,11 +327,8 @@ class Tissue:
             else:
                 self.alive_cells.discard((row, col))
 
-    @time_profile
     def next_state(self):
-        """
-        :
-        """
+        """ Finds and updates each cell in the matrix based on its corresponding ruleset."""
         alive_cells_copy = self.alive_cells.copy()
 
         # This handles all the edges of the Tissue matrix
