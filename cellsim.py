@@ -6,8 +6,7 @@ from random import random
 class Cell:
     """ CellType to be added to Tissue matrix (defined below).
     The state of the Cell is determined by its number of living neighbours in the matrix.
-    The set of rules it obeys depending on the neughbour count are as follows:
-        Cell dies if it has four or more alive neighbours.
+    The set of rules it obeys depending on the neighbour count. Behaviour is encapsulated in rule_set property.
 
     """
 
@@ -27,6 +26,8 @@ class Cell:
 
     @property
     def rule_set(self):
+        """
+    """
         return {0: False, 1: False, 2: self.alive, 3: True, 4: False, 5: False, 6: False, 7: False, 8: False}
 
     def update_cell(self, surroundings):
@@ -39,6 +40,11 @@ class Cell:
 
 
 class Cancer(Cell):
+    """ Subclass of Cell to be added to Tissue matrix (defined below).
+    The state of the Cancer Cell is determined by its number of living neighbours in the matrix.
+    The set of rules it obeys depending on the neighbour count. Behaviour is encapsulated in rule_set property.
+    """
+
     def __init__(self, alive=False):
         super().__init__(alive)
         self._marker = "X"
@@ -63,7 +69,6 @@ class Tissue:
             seed_from_matrix:
             seed_from_file
     """
-
 
     def __init__(self, rows=1, cols=1, CellType=Cell):
 
@@ -170,7 +175,6 @@ class Tissue:
         # Reset the alive cells:
         self.alive_cells = set()
 
-    
     def __str__(self):
         return "\n".join(["".join([str(x) for x in row]) for row in self.matrix])
 
@@ -187,12 +191,13 @@ class Tissue:
         except IndexError:
             pass
 
+    # ============================= Seeding the tissue ==========================================
+
     def seed_from_matrix(self, seed_matrix):
         """ Overwrites the four attribute variables given an input seed_matrix.
 
         Arguments:
             seed_matrix (list): Nested list 2D array containing Cell of objects.
-
         """
 
         self.clear_attributes()
@@ -257,9 +262,7 @@ class Tissue:
             CellType (class) : Cell Class to be used to fill the Tissue.
 
         """
-
-        self.clear_attributes()
-
+        
         self.CellType = CellType
         self.get_rule_set()
         self.find_pattern()
@@ -272,10 +275,10 @@ class Tissue:
 
                 else:
                     self.matrix[i][j] = CellType(False)
+        print(self.matrix)
 
-        self.rows = len(self.matrix)
-        self.cols = len(self.matrix[0])
 
+    # ============================= Updating the tissue matrix ==========================================
     def get_neighbours(self, y_coordinate, x_coordinate):
         """ The function takes the coordinates of a of point and returns of list of coordinates of its neighbours
 
@@ -310,11 +313,16 @@ class Tissue:
         neighbour_count = len(neighbours_set.intersection(alive_cells))
         return neighbour_count
 
-    def update_element(self, row, col, count):
+    def update_element(self, y, x, count):
+        """ Updates the set of state of the cell and the set of alive cells given its surroundings in the matrix.
+
+        Arguments:
+            y (int) - y coordinate of the cell
+            x (int) - x coordinate of the cell
+            count (int) - number of alive neighbours
         """
-        """
-        state1 = self.matrix[row][col].alive  # Current state of the cell
-        cell = self.matrix[row][col]
+        state1 = self.matrix[y][x].alive  # Current state of the cell
+        cell = self.matrix[y][x]
         cell.alive = self.ruleset[(count, state1)]
         state2 = cell.alive  # Updated state of the cell
         diff = (state2 != state1)
@@ -322,13 +330,14 @@ class Tissue:
         # Avoid calling add and discard in unnecessary situations:
         if diff:
             if state2:
-                self.alive_cells.add((row, col))
+                self.alive_cells.add((y, x))
 
             else:
-                self.alive_cells.discard((row, col))
+                self.alive_cells.discard((y, x))
 
     def next_state(self):
         """ Finds and updates each cell in the matrix based on its corresponding ruleset."""
+
         alive_cells_copy = self.alive_cells.copy()
 
         # This handles all the edges of the Tissue matrix
@@ -357,12 +366,12 @@ class Tissue:
                 for neighbour in neighbours:
                     neighbour[1] += 1
 
-                # Define conditions to skip:
+                # Define conditions to skip any checks:
                 if count in self._stasis:
                     continue
-                elif not state1 and count in self._death:
+                elif not state1 and count in self._death:  # If cell is dead and number of neighbours corresponds to death.
                     continue
-                elif state1 and count in self._revive:
+                elif state1 and count in self._revive:  # Cell is alive and Cell count corresponds to revive.
                     continue
 
                 else:
