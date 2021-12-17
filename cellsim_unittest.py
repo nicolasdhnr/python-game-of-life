@@ -61,12 +61,11 @@ print(tissue.cols == len(tissue.matrix[0]))
 print(tissue.CellType)
 
 print("========== String Method ==========")
-tissue = cellsim_log.Tissue(1000, 1000,cellsim_log.Cell)
+tissue = cellsim_log.Tissue(1000, 1000, cellsim_log.Cell)
 tissue = str(tissue)
 
-
 print("========== Getter and Setter ==========")
-tissue = cellsim_log.Tissue(6,3,cellsim_log.Cell)
+tissue = cellsim_log.Tissue(6, 3, cellsim_log.Cell)
 tissue[2][0] = cellsim_log.Cell(True)
 tissue[2][1] = cellsim_log.Cell(False)
 tissue[2][2] = cellsim_log.Cell(True)
@@ -74,7 +73,7 @@ print(tissue)
 print(tissue[2][0])
 print(tissue[2][1])
 print(tissue[2][2])
-tissue[4] = [cellsim_log.Cell(True), cellsim_log.Cell(True),cellsim_log.Cell(True)]
+tissue[4] = [cellsim_log.Cell(True), cellsim_log.Cell(True), cellsim_log.Cell(True)]
 print(tissue)
 
 print("========== Seed From Matrix ==========")
@@ -86,44 +85,29 @@ test_matrix[5][5] = cellsim_log.Cell(True)
 test_matrix[5][6] = cellsim_log.Cell(True)
 test_matrix[5][7] = cellsim_log.Cell(True)
 tissue.seed_from_matrix(test_matrix)
+print(tissue)
 print(tissue.alive_cells)
 
+print("========== Seed From File ==========")
 
-#
-# tissue = cellsim.Tissue(10, 40, cellsim.Cell)
-# tissue.seed_from_file('tt1.txt', cellsim.Cell)
-# print(tissue)
-#
-# # tissue = cellsim.Tissue(1000,4000)
-# tissue.seed_random(0.5, cellsim.Cell)
-# # print(tissue)
+tissue = cellsim_log.Tissue(10, 40, cellsim_log.Cell)
+tissue.seed_from_file('tt1.txt', cellsim_log.Cell)
+print(tissue)
 
-tissue = cellsim_log.Tissue(1000, 1000)
 
+print("========== Seed Random==========")
+tissue = cellsim_log.Tissue(10, 10)
 tissue.seed_random(0.5, cellsim_log.Cell)
-# print(tissue.cells_of_interest)
 
+# Check confluency
+print()
+print("Confluency is working properly: ", len(tissue.alive_cells) in range(45, 55))
 
-for i in range(5):
+print("========== Next state==========")
+print("=== BIG INPUT TEST ===")
+tissue = cellsim_log.Tissue(1000, 1000)
+tissue.seed_random(0.5, cellsim_log.Cell)
+for i in range(100):
     # os.system('clear') #will be os.system('cls')
     tissue.next_state()
     # print(tissue)
-
-
-#     time.sleep(0.1)
-# t1 = time.time()
-# copy.deepcopy([i for i in range(100)])
-# t2 = time.time()
-# print(t2 - t1)
-#
-# t1 = time.time()
-# a = [i for i in range(100)]
-# b = list(tuple([i for i in range(100)]))
-# print(id(a[2]), id(b[2]))
-
-# t2 = time.time()
-# print(t2 - t1)
-# print(id(a[2]), id(b[2]))
-# a[2] = "lmao"
-# print(b[2])
-# print(id(a[2]), id(b[2]))
