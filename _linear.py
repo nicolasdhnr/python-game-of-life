@@ -1,54 +1,6 @@
-import copy
-import os
-import time
-import psutil
-import cProfile, pstats, io
+from copy import deepcopy
 
-
-# TODO: DON'T IMPORT WHOLE MODULE
-
-#  ====================================Profilers =============================================
-# Time profiler
-def time_profile(fnc):
-    """A decorator that uses cProfile to profile a function"""
-
-    def inner(*args, **kwargs):
-        pr = cProfile.Profile()
-        pr.enable()
-        retval = fnc(*args, **kwargs)
-        pr.disable()
-        s = io.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        return retval
-
-    return inner
-
-
-# Space profiler
-def process_memory():
-    process = psutil.Process(os.getpid())
-    mem_info = process.memory_info()
-    return mem_info.rss
-
-
-# def space_profile(func):
-#     def wrapper(*args, **kwargs):
-#         mem_before = process_memory()
-#         result = func(*args, **kwargs)
-#         mem_after = process_memory()
-#         print("{}:consumed memory: {:,}".format(
-#             func.__name__,
-#             mem_before, mem_after, mem_after - mem_before))
-#
-#         return result
-#
-#     return wrapper
-
-
-# ===============================================Start of Code=====================================================
+# ===============================================CellTypes =====================================================
 
 class Cell:
     """
@@ -60,10 +12,11 @@ class Cell:
     def __init__(self, alive=False):
         # Error Handling
         self.alive = alive
+        self._marker = "O"
 
     def __str__(self):
         if self.alive:
-            return "O"
+            return self._marker
         else:
             return "."
 
@@ -84,6 +37,7 @@ class Cell:
 class Cancer(Cell):
     def __init__(self, alive=False):
         super().__init__(alive)
+        self._marker = "X"
 
 
 # TODO: Add this function
@@ -120,7 +74,7 @@ class Tissue:
         if issubclass(CellType, object) and all(
                 hasattr(CellType, attr) for attr in ["alive", "is_alive", "update_cell"]) \
                 and callable(hasattr(["is_alive",
-                                      "update_cell"])):  # TODO: This should be its own decorator. How do iI get this to check at each function where CellType is called, but ONLY ONCE.
+                                      "update_cell"])):
             self.CellType = CellType
         else:
             self.CellType = Cell
@@ -177,9 +131,10 @@ class Tissue:
                 with open(filename, "r", encoding="utf-8") as f:  # TODO: Add support for different paths.
                     # Read file, into a list without any leading or trailing spaces.
                     temp = f.readlines()
+                    self.CellType = CellType
                     for elem in temp:
                         self.matrix.append(list(
-                            map(lambda x: CellType(False) if x == "." else CellType(True), elem.replace("\n", ""))))
+                            map(lambda x: self.CellType(False) if x == "." else self.CellType(True), elem.replace("\n", ""))))
                     # TODO: error handling if its something other than those 2 in there or remove them from the file. Code not robust enough here.
                     del temp
 
