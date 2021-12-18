@@ -133,9 +133,6 @@ class Tissue:
                 center_element.update_cell(test_matrix)
                 self.ruleset[(neighbour_count, state)] = center_element.alive
 
-                # Sort the dictionary to access its values slightly faster.
-                self.ruleset = {key: self.ruleset[key] for key in sorted(self.ruleset.keys(), key=lambda ele: ele[0])}
-
     def find_pattern(self):
         """ Updates self._stasis, self._death, self._revive.
 
@@ -149,11 +146,11 @@ class Tissue:
             alive_case = self.ruleset[(i, True)]
             dead_case = self.ruleset[(i, False)]
 
-            if alive_case == True and dead_case == False:
+            if alive_case and not dead_case:
                 self._stasis.add(i)
-            elif alive_case == True and dead_case == True:
+            elif alive_case and dead_case:
                 self._revive.add(i)
-            elif alive_case == False and dead_case == False:
+            elif not alive_case and not dead_case:
                 self._death.add(i)
             else:
                 continue  # One more possibility but we don't want to store it.
@@ -244,7 +241,7 @@ class Tissue:
                                  row.replace("\n", "")))]
 
                     # Look through the matrix and add the coordinates of alive cells as tuples.
-                    for col_index in range(int(len(row)) - 1):
+                    for col_index in range(len(row) - 1):
                         if self.matrix[row_index][col_index].alive:
                             self.alive_cells.add((row_index, col_index))
 
@@ -262,7 +259,7 @@ class Tissue:
             CellType (class) : Cell Class to be used to fill the Tissue.
 
         """
-        
+
         self.CellType = CellType
         self.get_rule_set()
         self.find_pattern()
@@ -276,7 +273,6 @@ class Tissue:
                 else:
                     self.matrix[i][j] = CellType(False)
         print(self.matrix)
-
 
     # ============================= Updating the tissue matrix ==========================================
     def get_neighbours(self, y_coordinate, x_coordinate):
