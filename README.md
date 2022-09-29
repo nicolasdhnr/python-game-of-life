@@ -9,21 +9,22 @@
 
 
 <p align="center">
-  <a href="#key-features">Key Features</a> •
+  <a href="#key-features">Key Features & Constraints</a> •
   <a href="#how-to-use">How To Use</a> •
   <a href="#credits">Credits</a> •
   <a href="#related">Related</a> •
   <a href="#license">University</a>
 </p>
 
-![screenshot]()
-
-## Key Features
-
-* 
 
 
-## How To Use
+## Key Feature & Constraints
+This project was a coding challenge assigned at Imperial College London. The challenge resembles [Conway's game of life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) but with a set of extra challenges and twists designed to test our ability to code in an object-oriented manner. 
+
+
+
+
+## The Algorithm
 
 
 > **Note**
